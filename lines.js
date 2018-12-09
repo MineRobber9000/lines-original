@@ -1,33 +1,46 @@
+// add field (9 by 9)
 var field = [	[0, 0, 0, 0, 0, 0, 0, 0, 0],[0, 0, 0, 0, 0, 0, 0, 0, 0],[0, 0, 0, 0, 0, 0, 0, 0, 0],
 				[0, 0, 0, 0, 0, 0, 0, 0, 0],[0, 0, 0, 0, 0, 0, 0, 0, 0],[0, 0, 0, 0, 0, 0, 0, 0, 0],
 				[0, 0, 0, 0, 0, 0, 0, 0, 0],[0, 0, 0, 0, 0, 0, 0, 0, 0],[0, 0, 0, 0, 0, 0, 0, 0, 0]];
+// search field (for pathfinding)
 var search_field = [];
+// list of (empty) cells.
 var forRandom = [];
+// selected cell
 var selected = null;
+// main game background
 var bg = null;
+// the destination of the ball that is in motion
 var moving = false;
+// a list of balls that are to be removed
 var removing = false;
+// the cell where the moving ball started
 var start = null;
+// the score
 var score = 0;
+// the score record (read from cookies)
 var record = readCookie("lines-score");
+// the selection cursor
 var selection = null;
+// call init when the window is loaded
 onload = init;
 
-
+// loads in ball images
 for (var i = 0; i < 7; i++) {
 	eval('var img' + i + ' = new Image();img' + i + '.src = "i/ball' + i + '.png";');
 }
+// loads in selection cursor
 var imgsel = new Image();
 imgsel.src = "i/selection.png";
 
-
+// inits game state
 function init()
 {
 	bg = document.getElementById("bg");
 	for (var i = 0; i < 9; i++) {
 		for (var j = 0; j < 9; j++) {
-			forRandom.push({x:i,y:j});
-			var div = document.createElement("div");
+			forRandom.push({x:i,y:j}); // add location to empty cell list
+			var div = document.createElement("div"); // create cell div
 			div.style.left = i * 50 + "px";
 			div.style.top = j * 50 + "px";
 			div.x = i;
@@ -37,16 +50,16 @@ function init()
 			div.removing = 100;
 			div.onclick = cellClick;
 			div.id = "cell-" + i + "-" + j;
-			bg.appendChild(div);
+			bg.appendChild(div); // add to game field
 		}
 	}
-	forecast();
+	forecast(); // get ball colors
 	document.getElementById("record").innerHTML = (record)?record:0;
-	dropBalls();
+	dropBalls(); // drop first 3 balls
 	document.getElementById("forecast").onclick = dropBalls;
-	setInterval(Step, 1);
+	setInterval(Step, 1); // set Step to run every second
 
-	selection = document.getElementById("selection");
+	selection = document.getElementById("selection"); // get selection cursor
 	selection.jumpTo = function(x, y)
 	{
 		this.style.top = 50 * y + "px";
@@ -60,15 +73,15 @@ function init()
 	setTimeout(scrollTo, 100, 0, 15);
 }
 
-
+// function called when cell is clicked
 function cellClick()
 {
-	if (moving || removing) return;
-	if (this.className) {
+	if (moving || removing) return; // don't do anything while a ball is in motion or being removed
+	if (this.className) { // did you click on a cell with a ball? if so, select ball
 		selected = this;
 		selection.jumpTo(this.x, this.y);
 	} else {
-		if (selected) {
+		if (selected) { // if not, and there already is a selection, try to move there
 			var path = findPath(selected.x, selected.y, this.x, this.y);
 			if (path) {
 				selected.path = path;
@@ -81,7 +94,7 @@ function cellClick()
 	}
 }
 
-
+// animates moving balls, is also responsible for scoring
 function Step()
 {
 	var step = 10;
@@ -135,7 +148,7 @@ function Step()
 	}
 }
 
-
+// function responsible for actually moving the visible ball
 function finish(x, y)
 {
 	var next = document.getElementById("cell-" + x + "-" + y);
@@ -147,7 +160,7 @@ function finish(x, y)
 	moving.className = "";
 	moving.style.marginTop = 0;
 	moving.style.marginLeft = 0;
-	if (!moving.path.length) {
+	if (!moving.path.length) { // is the path done? if so, clean up and check for a possible score
 		moving.path = null;
 		moving.move = null;
 		moving = false;
@@ -155,7 +168,7 @@ function finish(x, y)
 		field[x][y] = field[start.x][start.y];
 		field[start.x][start.y] = 0;
 		if (!checktheBall(x, y)) dropBalls();
-	} else {
+	} else { // otherwise update moving cell
 		next.path = moving.path;
 		moving.path = null;
 		moving.move = null;
@@ -165,7 +178,7 @@ function finish(x, y)
 }
 
 
-
+// finds a path between (x1,y1) and (x2,y2). not gonna pretend I understand a lick of it but it's here.
 function findPath(x1, y1, x2, y2)
 {
 	var steps = Array();
@@ -240,7 +253,7 @@ function findPath(x1, y1, x2, y2)
 	return steps;
 }
 
-
+// gets 3 random spaces.
 function getRandom()
 {
 	var res = Array();
@@ -257,7 +270,7 @@ function getRandom()
 	return res;
 }
 
-
+// chooses the next 3 colors of ball
 function forecast()
 {
 	for (var i = 1; i < 4; i++) {
@@ -266,7 +279,7 @@ function forecast()
 	}
 }
 
-
+// replaces an entry for (oldx,oldy) to (newx,newy)
 function replaceRandom(oldx, oldy, newx, newy)
 {
 	for (var j = 0; j < forRandom.length; j++) {
@@ -278,21 +291,21 @@ function replaceRandom(oldx, oldy, newx, newy)
 	}
 }
 
-
+// drops the balls of the forecasted colors in up to 3 spots.
 function dropBalls()
 {
-	var nums = getRandom();
+	var nums = getRandom(); // get 3 random spots
 	var loosed = true;
 	for (var i = 0; i < nums.length; i++) {
-		field[nums[i].x][nums[i].y] = document.getElementById("ball-" + (i + 1)).className.substring(4) * 1;
-		document.getElementById("cell-" + nums[i].x + "-" + nums[i].y).className = document.getElementById("ball-" + (i + 1)).className;
-		if (checktheBall(nums[i].x, nums[i].y)) loosed = false;
+		field[nums[i].x][nums[i].y] = document.getElementById("ball-" + (i + 1)).className.substring(4) * 1; // set the number in `field` to the correct color
+		document.getElementById("cell-" + nums[i].x + "-" + nums[i].y).className = document.getElementById("ball-" + (i + 1)).className; // update display
+		if (checktheBall(nums[i].x, nums[i].y)) loosed = false; // if this ball can be removed then we're not stuck yet
 	}
-	if (!forRandom.length && loosed) loose();
-	forecast();
+	if (!forRandom.length && loosed) loose(); // if we're out of space and there's no balls to remove, we've lost
+	forecast(); // pick next 3 colors
 }
 
-
+// function for losing. (interestingly contains code to reset the game)
 function loose()
 {
 	alert("Game over");
@@ -312,7 +325,7 @@ function loose()
 	// score = 0;
 }
 
-
+// checks whether or not the ball at (x,y) can cause a score, and if so, calculates which balls can be removed. TODO: document more
 function checktheBall(x, y)
 {
 	var v = Array();
@@ -408,7 +421,7 @@ function checktheBall(x, y)
 	return res;
 }
 
-
+// create a cookie
 function createCookie(name, value, days) {
 	if (days) {
 		var date = new Date();
@@ -419,7 +432,7 @@ function createCookie(name, value, days) {
 	document.cookie = name + "=" + value + expires + "; path=/";
 }
 
-
+// read a cookie
 function readCookie(name) {
 	var nameEQ = name + "=";
 	var ca = document.cookie.split(';');
